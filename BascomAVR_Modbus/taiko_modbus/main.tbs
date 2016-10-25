@@ -1,0 +1,44 @@
+'======================================================
+' This is a bridge demo between Modbus/ASCII/RTU and MODBUS/Tcpip 
+' Serial port connected to Modbus/ASCII or MODBUS/RTU devices  
+' Ethernet port connected to server.
+' Commands were sent from server via ethernet, the slave device 
+' received commands from serial port by using Tibbo DS203,DS1202,
+' DS1206, EM1206EV,EM1000-EV and EM1000-TEV solutions.
+' All the setting are defined in boot.tbs 
+
+
+' LRC/lrc means Longitudinal Redundancy Checking
+' CRC/crc means Cyclical Redundancy Checking
+' released on November 16, 2009
+'======================================================
+include "global.tbh"
+
+public dim RTU_packet as string
+public dim NET_packet as string
+
+'---------MBAP assembly------7 characters-------------
+public dim Trans_ID as string(2)
+public dim Protocol_ID as string(2)
+public dim MSG_length as string(2)
+public dim Unit_ID as string(1)
+'-----------------------------------------------------
+public dim flag(8) as no_yes		' reserve an array for storing Transaction ID and 
+public dim TR_UN_ID(8) as string(3)	' Unit ID pairs 
+' -----------------------------------------------------
+public dim RTU_MODE as no_yes		' define mode of slave device is 
+									' RTU or ASCII 
+									' which mode was set in boot.tbs 
+'======================================================
+sub on_sys_init
+	boot
+end sub
+'======================================================
+sub on_ser_data_arrival()
+	serial_to_tcpip
+end sub
+'======================================================
+sub on_sock_data_arrival()
+	tcpip_to_serial
+end sub
+'======================================================

@@ -1,0 +1,117 @@
+include "global.tbh"
+
+'modbus_bridge.tbs included following subs and functions
+'sub tcpip_to_serial
+'sub serial_to_tcpip 
+'function get_crc(input_str as string) as string(2)
+
+
+'==================================================================
+sub tcpip_to_serial
+' Received data from TCPIP socket and reformat them from MODBUS_TCPIP to RTU mode. Then transmitted date to serial port
+
+	dim lrc_char as string(1)
+	dim temp_str as string
+	dim j,hi_byte,lo_byte as byte
+	dim num_msg as word	
+
+	NET_packet=sock.getdata(255)
+	
+	Trans_ID=left(NET_packet,2)			' store Transaction ID in Trans_ID variable	
+	Protocol_ID=mid(NET_packet,3,2)		' store Protocol ID in Protocol_ID variable	
+	if Protocol_ID <> MODBUS_MODE then exit sub
+	MSG_length=mid(NET_packet,5,2)		' store message length in MSG_length variable
+	num_msg=asc(MSG_length)*256
+	num_msg=num_msg+asc(mid(NET_packet,6,1))	' calculate number of following byte(s)
+	
+	Unit_ID=mid(NET_packet,7,1)			' store device address in Unit_ID variable
+
+	for j=0 to 7						' check the empty space to store Transaction ID and 
+		if flag(j) = no then 			' Unit ID
+			TR_UN_ID(j)=Trans_ID+Unit_ID'
+			flag(j)=YES					' And set flag(#) to YES state
+			goto cap_RTU
+		end if 
+	next 7
+cap_RTU:
+	NET_packet=right(NET_packet,len(NET_packet)-6)
+	if num_msg<> len(NET_packet) then exit sub
+	
+	temp_str=NET_packet+get_crc(NET_packet)
+send_data:	
+	ser.setdata(temp_str)		
+	ser.send
+end sub	
+
+'==================================================================
+sub serial_to_tcpip
+' Receive data from serial port, reformat from ASCII to RTU if ASCII mode selected. 
+' Combine MBAP and RTU string and transmit the result to TCP/IP socket.
+
+	dim get_ser_data, ascii_str,rtu_str as string
+	dim check_colon,temp_char,rtu_len_msb,rtu_len_lsb,rtu_id as string(1)
+	dim CRC_check as string(2)
+	dim len_rtu as word
+	dim i as byte
+	
+	temp_char=""
+	ascii_str=""
+	get_ser_data=""
+	rtu_str=""
+
+	'--------------check RTU-------------
+	get_ser_data=get_ser_data+ser.getdata(255)
+	CRC_check=right(get_ser_data,2)
+	rtu_str=left(get_ser_data,len(get_ser_data)-2)
+	rtu_id=left(rtu_str,1)
+	
+	if CRC_check=(get_crc(rtu_str)) then
+		len_rtu=len(rtu_str)
+		rtu_len_msb=chr(len_rtu/256)
+		rtu_len_lsb=chr(len_rtu mod 256)
+		for i=0 to 7								' search the corresponding Transaction ID
+			if right(TR_UN_ID(i),1) = rtu_id then	' by Unit ID
+				flag(i)=no
+				Trans_ID=left(TR_UN_ID(i),2)
+				TR_UN_ID(i)=""
+				goto end_check
+			end if
+		next i
+end_check:		
+		rtu_str=Trans_ID+Protocol_ID+rtu_len_msb+rtu_len_lsb+rtu_str
+		sock.setdata(rtu_str)
+		sock.send
+	end if	
+end sub	
+
+
+'==================================================================
+function get_crc(input_str as string) as string(2)
+' MODBUS 16-bit CRC calaulation: Argument is input_str which represented
+' address(Unit ID) and PDU(Protocol Data Unit). Returned string is caculated CRC
+
+	dim i,j,msb,lsb,input_length as byte
+	dim temp,carry_flag as word
+	
+	temp=CRC_INI
+	input_length=len(input_str)
+	
+	for i=1 to input_length						'modbus CRC-16 calculation
+
+		temp=temp XOR asc(mid(input_str,i,1))
+		for j=0 to 7
+			carry_flag=temp mod 2
+			temp=temp / 2
+			if carry_flag=1 then temp=temp XOR POLY		
+		next j
+	next i
+	
+	msb=temp/256
+	lsb=temp mod 256
+	get_crc=chr(lsb)+chr(msb)
+
+end function
+
+
+
+

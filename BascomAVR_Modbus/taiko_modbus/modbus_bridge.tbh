@@ -1,0 +1,24 @@
+'----------global variables-----------
+declare RTU_packet as string
+declare NET_packet as string
+'declare RTU_MODE as no_yes
+
+declare sub serial_to_tcpip
+declare sub tcpip_to_serial
+declare function get_crc(input_str as string) as string(2)
+
+'----- MBAP------ characters  --------
+declare Trans_ID as string(2)
+declare Protocol_ID as string(2)
+declare MSG_length as string(2)
+declare Unit_ID as string(1)
+
+declare flag(8) as no_yes			'
+declare TR_UN_ID(8) as string(3)	'reserve 8 array to store 
+
+
+const 	CR=chr(13)
+const	LF=chr(10)
+const	MODBUS_MODE=chr(0)+chr(0)
+const 	CRC_INI=&hFFFF
+const 	POLY=&HA001

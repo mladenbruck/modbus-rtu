@@ -1,0 +1,64 @@
+include "global.tbh"
+	
+sub set_baud(baud as byte)
+	'baud: 1-1200, 2-2400, 3-4800, 4- 9600, 5-19200, 6-38400, 7=57600, 8=115200
+	select case baud
+		case 1: ser.baudrate=ser.div9600*8		' 9600/1200=8 
+		case 2: ser.baudrate=ser.div9600*4		' 9600/2400=4
+		case 3: ser.baudrate=ser.div9600*2		' 9600/4800=2
+		case 4: ser.baudrate=ser.div9600		' 9600/9600=1
+		case 5: ser.baudrate=ser.div9600/2		' 19200/9600=2
+		case 6: ser.baudrate=ser.div9600/4		' 38400/9600=4 
+		case 7: ser.baudrate=ser.div9600/6		' 57600/9600=6
+		case 8: ser.baudrate=ser.div9600/12		' 115200/9600=12
+		case else: ser.baudrate=ser.div9600		' 9600/9600=1
+	end select
+end sub
+	
+'============================================================
+sub boot
+' set initial state of every parameters
+	dim p as byte
+
+	net.ip="192.168.0.24"	'<<<<<<<<<< IP-address of this device. CHANGE AS NEEDED!
+
+	sock.num=0
+	sock.rxbuffrq(8)		
+	sock.txbuffrq(8)
+	ser.num=0
+	ser.rxbuffrq(2)
+	ser.txbuffrq(2)
+	sys.buffalloc
+
+	sock.protocol = PL_SOCK_PROTOCOL_TCP		
+	sock.inconmode = PL_SOCK_INCONMODE_ANY_IP_ANY_PORT
+	sock.reconmode = PL_SOCK_RECONMODE_3
+	sock.localportlist = 502			' default port for Modbus/TCPIP
+
+'	sock.connectiontout	= 40
+	sock.connectiontout	= 0
+
+	'---------- EM1000 ONLY (uncomment if you are using EM1000) ----------
+	
+'	io.num=PL_IO_NUM_0	'RTS line of serial port 0
+'	io.enabled=YES		'we configure this line as output
+
+	'---------------------------------------------------------------------
+
+	' initialize serial settings
+	ser.parity         = PL_SER_PR_NONE	
+	ser.bits           = PL_SER_BB_8	
+	ser.flowcontrol    = DISABLED
+	set_baud(7)
+			
+	ser.interface      = PL_SER_SI_FULLDUPLEX
+	ser.esctype        = PL_SER_ET_DISABLED
+	ser.interchardelay = 5
+	ser.enabled		   = YES
+	
+	for p =0 to 7		'flag(8) array check that is there any empty space to store Transaction ID and Unit ID of MBAP 
+		flag(p)=no		'in sub tcpip_to_serial	
+	next p
+	
+end sub
+'============================================================
